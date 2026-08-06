@@ -1,0 +1,238 @@
+from __future__ import annotations
+
+import importlib.util
+import os
+import shutil
+import subprocess
+import sys
+from pathlib import Path
+
+ROOT = Path(__file__).resolve().parents[3]
+DIST = ROOT / "dist-review-windows"
+BUILD = ROOT / "build-review-windows"
+APP_DIR = DIST / "PAMalytics Review"
+EXE = APP_DIR / "PAMalytics Review.exe"
+ICON_PNG = ROOT / "packaging" / "macos" / "PAMalytics-icon.png"
+ICON_ICO = ROOT / "packaging" / "windows" / "PAMalytics.ico"
+VERSION_FILE = ROOT / "packaging" / "review" / "windows" / "version_info.txt"
+
+
+def _require_windows_python_312() -> None:
+    if os.name != "nt":
+        raise RuntimeError("The Windows application must be built on Windows.")
+    if sys.version_info[:2] != (3, 12):
+        raise RuntimeError(
+            "The Windows application must be built with Python 3.12. "
+            f"Current interpreter: {sys.version.split()[0]} at {sys.executable}"
+        )
+
+
+def _run(command: list[str]) -> None:
+    subprocess.run(command, cwd=str(ROOT), check=True)
+
+
+def _validate_source_imports() -> None:
+    _run(
+        [
+            sys.executable,
+            "-c",
+            (
+                "from code.scripts.dashboard import render_dashboard; "
+                "assert callable(render_dashboard); "
+                "print('Validated dashboard renderer import.')"
+            ),
+        ]
+    )
+
+
+def _create_windows_icon() -> None:
+    if ICON_ICO.is_file():
+        return
+    if not ICON_PNG.is_file():
+        raise RuntimeError(f"Missing source icon: {ICON_PNG}")
+
+    from PIL import Image
+
+    image = Image.open(ICON_PNG).convert("RGBA")
+    image.save(
+        ICON_ICO,
+        format="ICO",
+        sizes=[(16, 16), (24, 24), (32, 32), (48, 48), (64, 64), (128, 128), (256, 256)],
+    )
+
+
+
+def _write_version_info() -> None:
+    VERSION_FILE.write_text(
+        """VSVersionInfo(
+  ffi=FixedFileInfo(
+    filevers=(1, 0, 0, 0),
+    prodvers=(1, 0, 0, 0),
+    mask=0x3f,
+    flags=0x0,
+    OS=0x40004,
+    fileType=0x1,
+    subtype=0x0,
+    date=(0, 0)
+  ),
+  kids=[
+    StringFileInfo([
+      StringTable(
+        '040904B0',
+        [
+          StringStruct('CompanyName', 'PAMalytics'),
+          StringStruct('FileDescription', 'PAMalytics reviewer application'),
+          StringStruct('FileVersion', '1.0.1'),
+          StringStruct('InternalName', 'PAMalytics Review'),
+          StringStruct('LegalCopyright', 'PAMalytics'),
+          StringStruct('OriginalFilename', 'PAMalytics Review.exe'),
+          StringStruct('ProductName', 'PAMalytics Review'),
+          StringStruct('ProductVersion', '1.0.1')
+        ]
+      )
+    ]),
+    VarFileInfo([VarStruct('Translation', [1033, 1200])])
+  ]
+)
+""",
+        encoding="utf-8",
+    )
+
+
+def _installed(module_name: str) -> bool:
+    return importlib.util.find_spec(module_name) is not None
+
+
+def _append_collect_all(command: list[str], module_name: str) -> None:
+    if _installed(module_name):
+        command.extend(["--collect-all", module_name])
+
+
+def _append_metadata(command: list[str], distribution_name: str, module_name: str | None = None) -> None:
+    if _installed(module_name or distribution_name.replace("-", "_")):
+        command.extend(["--copy-metadata", distribution_name])
+
+
+def _validate_build() -> None:
+    if not EXE.is_file():
+        raise RuntimeError(f"PyInstaller did not create the executable: {EXE}")
+
+    required = [
+        APP_DIR / "_internal" / "code" / "ReviewHome.py",
+        APP_DIR / "_internal" / "review_demo_project" / "project.json",
+    ]
+    missing = [path for path in required if not path.exists()]
+    if missing:
+        raise RuntimeError(
+            "The packaged application is missing required files: "
+            + ", ".join(str(path) for path in missing)
+        )
+
+    print(f"Validated Windows application: {EXE}")
+
+
+def main() -> int:
+    _require_windows_python_312()
+    _validate_source_imports()
+    _create_windows_icon()
+    _write_version_info()
+
+    for path in (DIST, BUILD):
+        if path.exists():
+            shutil.rmtree(path)
+
+    command = [
+        sys.executable,
+        "-m",
+        "PyInstaller",
+        "--name",
+        "PAMalytics Review",
+        "--distpath",
+        str(DIST),
+        "--workpath",
+        str(BUILD),
+        "--specpath",
+        str(BUILD),
+        "--windowed",
+        "--onedir",
+        "--clean",
+        "--noconfirm",
+        "--icon",
+        str(ICON_ICO),
+        "--version-file",
+        str(VERSION_FILE),
+        "--add-data",
+        f"{ROOT / 'code'}{os.pathsep}code",
+        "--add-data",
+        f"{ROOT / 'demo_project'}{os.pathsep}review_demo_project",
+        "--add-data",
+        f"{ICON_ICO}{os.pathsep}packaging/windows",
+        "--add-data",
+        f"{ICON_PNG}{os.pathsep}packaging/windows",
+    ]
+
+    for module_name in [
+        "streamlit",
+        "altair",
+        "plotly",
+        "pydeck",
+        "matplotlib",
+        "librosa",
+        "soundfile",
+        "audioread",
+        "soxr",
+        "numba",
+        "llvmlite",
+        "scipy",
+        "sklearn",
+        "pyproj",
+        "pandas",
+        "numpy",
+        "openpyxl",
+        "tqdm",
+        "pyarrow",
+    ]:
+        _append_collect_all(command, module_name)
+
+    for distribution_name, module_name in [
+        ("streamlit", "streamlit"),
+        ("altair", "altair"),
+        ("plotly", "plotly"),
+        ("pydeck", "pydeck"),
+        ("pandas", "pandas"),
+        ("numpy", "numpy"),
+        ("librosa", "librosa"),
+        ("soundfile", "soundfile"),
+        ("audioread", "audioread"),
+        ("soxr", "soxr"),
+        ("numba", "numba"),
+        ("llvmlite", "llvmlite"),
+        ("scipy", "scipy"),
+        ("scikit-learn", "sklearn"),
+        ("matplotlib", "matplotlib"),
+        ("pyproj", "pyproj"),
+        ("openpyxl", "openpyxl"),
+        ("tqdm", "tqdm"),
+        ("pyarrow", "pyarrow"),
+    ]:
+        _append_metadata(command, distribution_name, module_name)
+
+    command.extend(
+        [
+            "--hidden-import",
+            "streamlit.web.cli",
+            "--hidden-import",
+            "streamlit.runtime.scriptrunner",
+            "--hidden-import",
+            "tkinter",
+            str(ROOT / "packaging" / "review" / "windows" / "launcher.py"),
+        ]
+    )
+
+    _run(command)
+    _validate_build()
+    return 0
+
+
+if __name__ == "__main__":
+    raise SystemExit(main())

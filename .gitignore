@@ -68,3 +68,16 @@ PAMalytics/
 
 # macOS
 .DS_Store
+
+# Reviewer build outputs
+build-review/
+dist-review/
+release-review/
+build-review-windows/
+dist-review-windows/
+release-review-windows/
+packaging/review/windows/version_info.txt
+
+# macOS metadata
+.DS_Store
+**/.DS_Store
