@@ -42,6 +42,11 @@ Name: "english"; MessagesFile: "compiler:Default.isl"
 [Tasks]
 Name: "desktopicon"; Description: "Create a desktop shortcut"; GroupDescription: "Additional shortcuts:"; Flags: unchecked
 
+[InstallDelete]
+; Remove files left by an older reviewer build before installing the new one.
+; User projects live under Documents and are not stored in {app}.
+Type: filesandordirs; Name: "{app}\*"
+
 [Files]
 Source: "{#MySourceDir}\*"; DestDir: "{app}"; Flags: ignoreversion recursesubdirs createallsubdirs
 

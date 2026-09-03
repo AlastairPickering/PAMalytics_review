@@ -128,6 +128,7 @@ def _validate_build() -> None:
             + ", ".join(str(path) for path in missing)
         )
 
+
     print(f"Validated Windows application: {EXE}")
 
 

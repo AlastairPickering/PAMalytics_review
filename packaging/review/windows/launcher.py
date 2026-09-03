@@ -17,6 +17,7 @@ from urllib.request import urlopen
 APP_NAME = "PAMalytics Review"
 APP_USER_MODEL_ID = "PAMalytics.Review.Desktop.1"
 DEFAULT_PORT = 8511
+DEMO_RELEASE = "1.0.2"
 SERVER_MODE_ARGUMENT = "--pamalytics-streamlit-server"
 STARTUP_TIMEOUT_SECONDS = 90.0
 
@@ -151,11 +152,20 @@ def _prepare_review_project(home: Path) -> Path:
     projects_root.mkdir(parents=True, exist_ok=True)
 
     target = projects_root / "PAMalytics_review_demo"
+    marker = target / ".review_demo_release"
 
-    if not (target / "project.json").is_file():
+    installed_release = ""
+    if marker.is_file():
+        try:
+            installed_release = marker.read_text(encoding="utf-8").strip()
+        except OSError:
+            installed_release = ""
+
+    if not (target / "project.json").is_file() or installed_release != DEMO_RELEASE:
         if target.exists():
             shutil.rmtree(target)
         shutil.copytree(source, target)
+        marker.write_text(DEMO_RELEASE + "\n", encoding="utf-8")
 
     return target
 
