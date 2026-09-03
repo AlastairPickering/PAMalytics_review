@@ -3,6 +3,7 @@ set -euo pipefail
 
 ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/../../.." && pwd)"
 VERSION="${1:-}"
+DISPLAY_VERSION="${VERSION#review-}"
 SIGNING_IDENTITY="${PAMALYTICS_CODESIGN_IDENTITY:-}"
 NOTARY_PROFILE="${PAMALYTICS_NOTARY_PROFILE:-}"
 
@@ -10,12 +11,12 @@ APP="$ROOT/dist-review/PAMalytics Review.app"
 ICON="$ROOT/packaging/macos/PAMalytics.icns"
 RELEASE_DIR="$ROOT/release-review"
 DMG_ROOT="$RELEASE_DIR/dmg-root"
-DMG_OUT="$RELEASE_DIR/PAMalytics-review-${VERSION}-macOS-arm64.dmg"
+DMG_OUT="$RELEASE_DIR/PAMalytics-review-${DISPLAY_VERSION}-macOS-arm64.dmg"
 CHECKSUM_OUT="$DMG_OUT.sha256"
 
 if [[ -z "$VERSION" ]]; then
   echo "Usage: bash packaging/review/macos/build_dmg.sh <version>" >&2
-  echo "Example: bash packaging/review/macos/build_dmg.sh v1.0.1" >&2
+  echo "Example: bash packaging/review/macos/build_dmg.sh review-v1.0.2" >&2
   exit 1
 fi
 

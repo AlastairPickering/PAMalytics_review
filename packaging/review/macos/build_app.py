@@ -29,10 +29,10 @@ def _run(command: list[str]) -> None:
     subprocess.run(command, cwd=str(ROOT), check=True)
 
 
-def _signing_identity() -> str:
+def _signing_identity() -> str | None:
     identity = os.environ.get("PAMALYTICS_CODESIGN_IDENTITY", DEFAULT_SIGNING_IDENTITY).strip()
     if not identity:
-        raise RuntimeError("PAMALYTICS_CODESIGN_IDENTITY is empty.")
+        return None
 
     result = subprocess.run(
         ["security", "find-identity", "-v", "-p", "codesigning"],
@@ -49,7 +49,7 @@ def _signing_identity() -> str:
     return identity
 
 
-def _validate_app_bundle(signing_identity: str) -> None:
+def _validate_app_bundle(signing_identity: str | None) -> None:
     if not APP.is_dir():
         raise RuntimeError(f"PyInstaller did not create the app bundle: {APP}")
     if not INFO_PLIST.is_file():
@@ -75,27 +75,30 @@ def _validate_app_bundle(signing_identity: str) -> None:
     if plutil:
         _run([plutil, "-lint", str(INFO_PLIST)])
 
-    codesign = shutil.which("codesign")
-    if not codesign:
-        raise RuntimeError("codesign was not found; this build must run on macOS.")
-    _run([codesign, "--verify", "--deep", "--strict", "--verbose=2", str(APP)])
-
-    details = subprocess.run(
-        [codesign, "--display", "--verbose=4", str(APP)],
-        cwd=str(ROOT),
-        check=True,
-        capture_output=True,
-        text=True,
-    )
-    signature_output = details.stdout + details.stderr
-    if signing_identity.split(" (")[0].replace("Developer ID Application: ", "") not in signature_output:
-        raise RuntimeError("The app bundle was not signed with the expected Developer ID identity.")
-    if "runtime" not in signature_output:
-        raise RuntimeError("The app signature does not have hardened runtime enabled.")
-
     print(f"Validated app bundle: {APP}")
     print(f"Validated app icon: {icon_path}")
-    print("Validated macOS code signature.")
+
+    if signing_identity:
+        codesign = shutil.which("codesign")
+        if not codesign:
+            raise RuntimeError("codesign was not found; signed builds must run on macOS.")
+        _run([codesign, "--verify", "--deep", "--strict", "--verbose=2", str(APP)])
+
+        details = subprocess.run(
+            [codesign, "--display", "--verbose=4", str(APP)],
+            cwd=str(ROOT),
+            check=True,
+            capture_output=True,
+            text=True,
+        )
+        signature_output = details.stdout + details.stderr
+        if signing_identity.split(" (")[0].replace("Developer ID Application: ", "") not in signature_output:
+            raise RuntimeError("The app bundle was not signed with the expected Developer ID identity.")
+        if "runtime" not in signature_output:
+            raise RuntimeError("The app signature does not have hardened runtime enabled.")
+        print("Validated macOS code signature.")
+    else:
+        print("Built unsigned local test app (no PAMALYTICS_CODESIGN_IDENTITY set).")
 
 
 
@@ -158,10 +161,17 @@ def main() -> int:
         "--noconfirm",
         "--icon",
         str(ROOT / "packaging" / "macos" / "PAMalytics.icns"),
-        "--codesign-identity",
-        signing_identity,
-        "--osx-entitlements-file",
-        str(ENTITLEMENTS),
+    ]
+
+    if signing_identity:
+        cmd.extend([
+            "--codesign-identity",
+            signing_identity,
+            "--osx-entitlements-file",
+            str(ENTITLEMENTS),
+        ])
+
+    cmd.extend([
         "--add-data",
         f"{ROOT / 'code'}:code",
         "--add-data",
@@ -249,7 +259,7 @@ def main() -> int:
         "--hidden-import",
         "PyObjCTools",
         str(ROOT / "packaging" / "review" / "macos" / "launcher.py"),
-    ]
+    ])
 
     _run(cmd)
     _validate_app_bundle(signing_identity)

@@ -22,6 +22,7 @@ except ImportError:
 
 APP_NAME = "PAMalytics Review"
 DEFAULT_PORT = 8510
+MAX_PORT_SEARCH = 50
 SERVER_MODE_ARGUMENT = "--pamalytics-streamlit-server"
 STARTUP_TIMEOUT_SECONDS = 90.0
 
@@ -76,6 +77,42 @@ def _choose_port() -> int:
     if port < 1024 or port > 65535:
         port = DEFAULT_PORT
     return port
+
+
+def _find_available_port(preferred: int) -> int:
+    for port in range(preferred, min(preferred + MAX_PORT_SEARCH, 65536)):
+        if not _port_open(port):
+            return port
+    raise RuntimeError(
+        f"Could not find a free local port between {preferred} and "
+        f"{min(preferred + MAX_PORT_SEARCH - 1, 65535)}."
+    )
+
+
+def _port_file() -> Path:
+    return _runtime_root() / "server.port"
+
+
+def _write_port_file(port: int) -> None:
+    try:
+        _port_file().write_text(str(port), encoding="utf-8")
+    except OSError:
+        pass
+
+
+def _read_port_file() -> int | None:
+    try:
+        port = int(_port_file().read_text(encoding="utf-8").strip())
+    except (OSError, ValueError):
+        return None
+    return port if 1024 <= port <= 65535 else None
+
+
+def _clear_port_file() -> None:
+    try:
+        _port_file().unlink(missing_ok=True)
+    except OSError:
+        pass
 
 
 def _app_url(port: int) -> str:
@@ -219,12 +256,6 @@ def _start_server(port: int) -> None:
         if _server_process is not None and _server_process.poll() is None:
             return
 
-        if _port_open(port):
-            raise RuntimeError(
-                f"Port {port} is already occupied by another process. "
-                f"Quit that process or set PAMALYTICS_PORT to another port."
-            )
-
         env = os.environ.copy()
         env["PAMALYTICS_PORT"] = str(port)
         env["ARROW_DEFAULT_MEMORY_POOL"] = "system"
@@ -241,6 +272,7 @@ def _start_server(port: int) -> None:
         finally:
             server_log.close()
 
+        _write_port_file(port)
         _log(f"Started Streamlit server process {_server_process.pid} on port {port}.")
 
 
@@ -255,6 +287,7 @@ def _stop_server() -> None:
         _server_process = None
 
     if process is None or process.poll() is not None:
+        _clear_port_file()
         return
 
     _log(f"Stopping Streamlit server process {process.pid}.")
@@ -273,6 +306,8 @@ def _stop_server() -> None:
             pass
     except ProcessLookupError:
         pass
+    finally:
+        _clear_port_file()
 
 
 def _run_streamlit_server() -> int:
@@ -333,10 +368,11 @@ def _run_macos_application() -> int:
         NSObject,
     )
 
-    port = _choose_port()
+    preferred_port = _choose_port()
     _configure_environment(_user_root())
 
     if not _acquire_instance_lock():
+        port = _read_port_file() or preferred_port
         deadline = time.monotonic() + STARTUP_TIMEOUT_SECONDS
         while time.monotonic() < deadline:
             if _health_ready(port) and _app_ready(port):
@@ -348,6 +384,11 @@ def _run_macos_application() -> int:
             "Quit PAMalytics from the Dock or Activity Monitor and open it again."
         )
         return 1
+
+    port = _find_available_port(preferred_port)
+    if port != preferred_port:
+        _log(f"Preferred port {preferred_port} is occupied; using port {port} instead.")
+    os.environ["PAMALYTICS_PORT"] = str(port)
 
     class AppDelegate(NSObject):
         def applicationDidFinishLaunching_(self, notification) -> None:
