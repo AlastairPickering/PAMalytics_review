@@ -8,15 +8,15 @@ Author identities, institutional details, the public project repository and perm
 
 The package includes:
 
-- `PAMalytics-review-v1.0.2-macOS-arm64.dmg`
-- `PAMalytics-review-v1.0.2-windows-x64-setup.exe`
+- `PAMalytics-review-v1.0.3-macOS-arm64.dmg`
+- `PAMalytics-review-v1.0.3-windows-x64-setup.exe`
 - anonymised source code in `source/`
 
 No coding or command-line use is required to explore the application.
 
 ## macOS
 
-1. Open `PAMalytics-review-v1.0.2-macOS-arm64.dmg`.
+1. Open `PAMalytics-review-v1.0.3-macOS-arm64.dmg`.
 2. Drag **PAMalytics Review** into **Applications**.
 3. Launch **PAMalytics Review** from Applications.
 
@@ -26,7 +26,7 @@ The macOS application is signed and notarised by Apple.
 
 ## Windows
 
-1. Run `PAMalytics-review-v1.0.2-windows-x64-setup.exe`.
+1. Run `PAMalytics-review-v1.0.3-windows-x64-setup.exe`.
 2. Launch **PAMalytics Review** from the Windows Start menu.
 
 The Windows installer is unsigned, so Windows may display a security warning. Select **More info**, then **Run anyway**.
@@ -55,5 +55,5 @@ Git history, repository metadata and development build outputs are not included.
 
 SHA-256 checksum files are supplied alongside both installers:
 
-- `PAMalytics-review-v1.0.2-macOS-arm64.dmg.sha256`
-- `PAMalytics-review-v1.0.2-windows-x64-setup.exe.sha256`
+- `PAMalytics-review-v1.0.3-macOS-arm64.dmg.sha256`
+- `PAMalytics-review-v1.0.3-windows-x64-setup.exe.sha256`
