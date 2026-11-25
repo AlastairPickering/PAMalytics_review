@@ -5,7 +5,6 @@
 from pathlib import Path
 import sys
 import importlib.util
-import json
 
 import streamlit as st
 
@@ -21,37 +20,8 @@ REAL_PAGE = PAGE_IMPL_DIR / "1_Validate.py"
 
 if str(STUDIO_ROOT) not in sys.path:
     sys.path.insert(0, str(STUDIO_ROOT))
-from app_paths import AUTH_FILE
 
 
-def sidebar_signout_button(label: str = "Sign out") -> None:
-    """
-    Show a sign-out button in the sidebar and log the user out when clicked.
-
-    """
-    with st.sidebar:
-        st.markdown("---")
-        if st.button(label, key="pa_signout_sidebar_validate"):
-            # Clear auth- and project-related session state
-            for k in list(st.session_state.keys()):
-                if str(k) in {"auth_user", "route", "current_project", "pa_page"} or str(k).startswith((
-                    "bd2_", "manual_", "import_", "audio_", "metadata_", "ds_", "dataset_",
-                    "val_", "filters_", "pa_"
-                )):
-                    st.session_state.pop(k, None)
-
-            # Clear "remember me" file
-            try:
-                AUTH_FILE.write_text(
-                    json.dumps({"remember": False, "user": ""}),
-                    encoding="utf-8",
-                )
-            except Exception:
-                pass
-
-            # Route back to the main Home.py login entrypoint
-            st.session_state["route"] = "login"
-            st.switch_page("Home.py")
 
 
 # Make sure relevant dirs are importable
@@ -61,8 +31,6 @@ for p in (SCRIPTS_DIR, CORE_DIR, PAGE_IMPL_DIR):
 
 st.set_page_config(page_title="PAMalytics — Validation", layout="wide", initial_sidebar_state="expanded")
 
-# Sidebar sign out
-sidebar_signout_button()
 
 # Load analysis data prepared by the Dashboard launcher
 def _pull_from_state(*candidates):

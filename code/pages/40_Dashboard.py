@@ -1,7 +1,6 @@
 # code/pages/40_Dashboard.py
 from pathlib import Path
 import sys
-import json
 
 import streamlit as st
 from code.scripts.dashboard import render_dashboard
@@ -11,7 +10,6 @@ THIS_FILE = Path(__file__).resolve()
 STUDIO_ROOT = THIS_FILE.parent.parent
 if str(STUDIO_ROOT) not in sys.path:
     sys.path.insert(0, str(STUDIO_ROOT))
-from app_paths import AUTH_FILE
 
 
 def _has_streamlit_context() -> bool:
@@ -22,27 +20,6 @@ def _has_streamlit_context() -> bool:
         return False
 
 
-def sidebar_signout_button(label: str = "Sign out") -> None:
-    with st.sidebar:
-        st.markdown("---")
-        if st.button(label, key="pa_signout_sidebar"):
-            for k in list(st.session_state.keys()):
-                if str(k) in {"auth_user", "route", "current_project", "pa_page"} or str(k).startswith((
-                    "bd2_", "manual_", "import_", "audio_", "metadata_", "ds_", "dataset_",
-                    "val_", "filters_", "pa_"
-                )):
-                    st.session_state.pop(k, None)
-
-            try:
-                AUTH_FILE.write_text(
-                    json.dumps({"remember": False, "user": ""}),
-                    encoding="utf-8",
-                )
-            except Exception:
-                pass
-
-            st.session_state["route"] = "login"
-            st.switch_page("Home.py")
 
 
 
@@ -95,7 +72,6 @@ def render_page() -> None:
     st.session_state["pa_sources"] = sources
     st.session_state["pa_ready"] = True
 
-    sidebar_signout_button()
     render_dashboard(df_det, sources)
 
 
