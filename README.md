@@ -1,8 +1,8 @@
-# PAMalytics — anonymous peer-review version
+# PAMalytics — peer-review version
 
-This package contains the anonymised source code, demonstration materials and desktop applications for the software described in the accompanying manuscript.
+This package contains the source code, demonstration materials and desktop applications for the software described in the accompanying manuscript.
 
-Author identities, institutional details, the public project repository and permanent archive have been withheld during double-anonymous peer review.
+Author identities, institutional details, the public project repository and permanent archive have been withheld during  peer review.
 
 ## Reviewer access
 
@@ -21,8 +21,6 @@ No coding or command-line use is required to explore the application.
 3. Launch **PAMalytics Review** from Applications.
 
 The macOS application is signed and notarised by Apple.
-
-> **Double-anonymous review note:** Apple’s code-signing certificate contains the developer’s legal identity in its technical metadata. Reviewers are therefore asked not to inspect the application’s signing certificate or signature details during review.
 
 ## Windows
 
